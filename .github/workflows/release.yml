@@ -39,6 +39,10 @@ jobs:
       - name: Run Unit Tests
         run: ./gradlew test --stacktrace
 
+      - name: Generate Release Keystore
+        run: |
+          keytool -genkey -v -keystore release.keystore -alias nomopixkey -keyalg RSA -keysize 2048 -validity 10000 -storepass nomopixpass -keypass nomopixpass -dname "CN=Nomopix, OU=Apps, O=Nomopix, L=City, ST=State, C=US"
+
       - name: Build Release APK
         run: ./gradlew assembleRelease --stacktrace
 

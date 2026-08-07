@@ -23,10 +23,26 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            val keystoreFile = file("${project.rootDir}/release.keystore")
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "nomopixpass"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "nomopixkey"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "nomopixpass"
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            val relSigningConfig = signingConfigs.findByName("release")
+            if (relSigningConfig?.storeFile?.exists() == true) {
+                signingConfig = relSigningConfig
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
