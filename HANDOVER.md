@@ -29,6 +29,8 @@
    - Upgrade to Latest version
    - Downgrade to Previous version
    - Uninstall app
+4. **Ultra-Lightweight Size Optimization**: Minified with R8 (`isMinifyEnabled = true`, `isShrinkResources = true`) to **2.9 MB**.
+5. **GitHub Release Pipeline (`release.yml`)**: Automated `.github/workflows/release.yml` pipeline that triggers on `v*` tag pushes to test, build release binaries, and publish releases to GitHub Releases.
 4. **Live Download Progress**: Real-time progress bar with byte counts during APK downloading.
 5. **Configurable Index Source**: Interactive dialog allowing users to update the `index.txt` source URL at runtime.
 

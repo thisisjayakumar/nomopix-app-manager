@@ -16,6 +16,8 @@ It eliminates the need to manually download and reinstall app releases from GitH
   - ⬇️ **Downgrade**: Downgrade an app to its previous release version.
   - 🗑️ **Uninstall**: One-click uninstall option for any managed app.
 - 🔄 **Dynamic Index Refresh**: Refresh button and configurable Index URL dialog to update app listings whenever `index.txt` changes.
+- 🚀 **Ultra-Lightweight (2.9 MB APK)**: Optimized with R8 minification & resource shrinking for maximum performance and minimal download size.
+- ⚙️ **Automated GitHub Release Pipeline**: Integrated `.github/workflows/release.yml` GitHub Actions pipeline that automatically builds, tests, packages, and publishes APK & AAB releases on git tag pushes (`v*`).
 - 📱 **Self-Management**: The manager app itself can be downloaded and installed once, after which it manages all other Nomopix apps.
 - 🎨 **Modern Aesthetics**: Built using Jetpack Compose with modern dark themes, glowing status pills, download progress bars, and Material 3 design system.
 
