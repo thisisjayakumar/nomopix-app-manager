@@ -49,6 +49,12 @@ jobs:
       - name: Build Release App Bundle (.aab)
         run: ./gradlew bundleRelease --stacktrace
 
+      - name: Prepare Release Binaries with Custom Names
+        run: |
+          mkdir -p release_assets
+          cp app/build/outputs/apk/release/*.apk release_assets/Nomopix-Manager_${{ github.ref_name }}.apk
+          cp app/build/outputs/bundle/release/*.aab release_assets/Nomopix-Manager_${{ github.ref_name }}.aab
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -58,7 +64,7 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/bundle/release/*.aab
+            release_assets/Nomopix-Manager_${{ github.ref_name }}.apk
+            release_assets/Nomopix-Manager_${{ github.ref_name }}.aab
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

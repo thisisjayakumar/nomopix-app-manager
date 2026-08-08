@@ -3,7 +3,7 @@
 > **Repository:** `nomopix-app-manager`  
 > **Location:** `/home/njayakumar/Documents/projects/nomopix-app-manager`  
 > **Version:** `v1.0.0`  
-> **Last Updated:** 2026-08-07  
+> **Last Updated:** 2026-08-08  
 
 ---
 
@@ -29,10 +29,10 @@
    - Upgrade to Latest version
    - Downgrade to Previous version
    - Uninstall app
-4. **Ultra-Lightweight Size Optimization**: Minified with R8 (`isMinifyEnabled = true`, `isShrinkResources = true`) to **2.9 MB**.
-5. **GitHub Release Pipeline (`release.yml`)**: Automated `.github/workflows/release.yml` pipeline that triggers on `v*` tag pushes to test, build release binaries, and publish releases to GitHub Releases.
-4. **Live Download Progress**: Real-time progress bar with byte counts during APK downloading.
-5. **Configurable Index Source**: Interactive dialog allowing users to update the `index.txt` source URL at runtime.
+4. **Custom Versioned Release Asset Naming (`release.yml`)**: Automated GitHub Actions workflow publishes versioned release assets named `Nomopix-Manager_${version}.apk` and `Nomopix-Manager_${version}.aab`.
+5. **Ultra-Lightweight Size Optimization**: Minified with R8 (`isMinifyEnabled = true`, `isShrinkResources = true`) to **2.9 MB**.
+6. **Live Download Progress**: Real-time progress bar with byte counts during APK downloading.
+7. **Configurable Index Source**: Interactive dialog allowing users to update the `index.txt` source URL at runtime.
 
 ---
 
