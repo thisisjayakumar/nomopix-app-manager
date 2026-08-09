@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.nomopix.appmanager.core.installer.ApkInstallerManager
 import com.nomopix.appmanager.core.model.AppDownloadProgress
 import com.nomopix.appmanager.core.model.AppRelease
+import com.nomopix.appmanager.core.model.InstallStatus
 import com.nomopix.appmanager.core.model.NomopixApp
 import com.nomopix.appmanager.core.network.GitHubReleaseFetcher
 import com.nomopix.appmanager.core.network.IndexParser
@@ -24,7 +25,8 @@ data class AppManagerUiState(
     val isRefreshing: Boolean = false,
     val indexUrl: String = IndexParser.DEFAULT_INDEX_URL,
     val searchQuery: String = "",
-    val activeDownloads: Map<String, AppDownloadProgress> = emptyMap()
+    val activeDownloads: Map<String, AppDownloadProgress> = emptyMap(),
+    val updatesAvailableCount: Int = 0
 )
 
 @HiltViewModel
@@ -68,12 +70,15 @@ class AppManagerViewModel @Inject constructor(
             }
         }
 
+        val updatesCount = updatedList.count { it.installStatus == InstallStatus.UPDATE_AVAILABLE }
+
         AppManagerUiState(
             apps = filtered,
             isRefreshing = refreshing,
             indexUrl = url,
             searchQuery = query,
-            activeDownloads = downloads
+            activeDownloads = downloads,
+            updatesAvailableCount = updatesCount
         )
     }.stateIn(viewModelScope, SharingStarted.Lazily, AppManagerUiState())
 
@@ -116,9 +121,30 @@ class AppManagerViewModel @Inject constructor(
         _searchQuery.value = query
     }
 
-    fun installRelease(app: NomopixApp, release: AppRelease) {
+    fun upgradeAllAvailableApps() {
+        val upgradableApps = uiState.value.apps.filter {
+            it.installStatus == InstallStatus.UPDATE_AVAILABLE && it.latestRelease != null
+        }
+        if (upgradableApps.isEmpty()) return
+
+        viewModelScope.launch {
+            for (app in upgradableApps) {
+                app.latestRelease?.let { release ->
+                    installRelease(app, release, forceUpgrade = true)
+                }
+            }
+        }
+    }
+
+    fun installRelease(app: NomopixApp, release: AppRelease, forceUpgrade: Boolean = false) {
         if (release.apkDownloadUrl.isBlank()) {
             Timber.w("Cannot install release ${release.tag}: APK download URL is empty")
+            return
+        }
+
+        // Prevent re-installing the exact same app version unless explicitly forced
+        if (!forceUpgrade && installerManager.isSameVersionInstalled(app.installedVersionName, release.tag)) {
+            Timber.i("App ${app.name} is already installed with version ${app.installedVersionName}. Skipping redundant re-installation.")
             return
         }
 

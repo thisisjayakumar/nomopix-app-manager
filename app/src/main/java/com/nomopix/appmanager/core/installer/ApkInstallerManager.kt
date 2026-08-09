@@ -66,20 +66,26 @@ class ApkInstallerManager @Inject constructor(
         }
     }
 
+    fun isSameVersionInstalled(installedVersionName: String?, releaseTag: String): Boolean {
+        if (installedVersionName.isNullOrBlank() || releaseTag.isBlank()) return false
+        return compareVersions(installedVersionName, releaseTag) == 0
+    }
+
     fun evaluateInstallStatus(app: NomopixApp): InstallStatus {
         val info = getInstalledAppInfo(app.packageName)
         if (!info.isInstalled) return InstallStatus.NOT_INSTALLED
 
-        val latestTag = app.latestRelease?.tag?.removePrefix("v") ?: ""
-        val installedVer = info.versionName?.removePrefix("v") ?: ""
+        val latestTag = app.latestRelease?.tag ?: ""
+        val installedVer = info.versionName ?: ""
 
         if (installedVer.isBlank() || latestTag.isBlank()) {
             return InstallStatus.INSTALLED_UP_TO_DATE
         }
 
+        val comparison = compareVersions(installedVer, latestTag)
         return when {
-            installedVer.equals(latestTag, ignoreCase = true) -> InstallStatus.INSTALLED_UP_TO_DATE
-            compareVersions(installedVer, latestTag) < 0 -> InstallStatus.UPDATE_AVAILABLE
+            comparison < 0 -> InstallStatus.UPDATE_AVAILABLE
+            comparison == 0 -> InstallStatus.INSTALLED_UP_TO_DATE
             else -> InstallStatus.OLDER_VERSION_INSTALLED
         }
     }
@@ -177,11 +183,18 @@ class ApkInstallerManager @Inject constructor(
         }
     }
 
-    private fun compareVersions(v1: String, v2: String): Int {
-        val parts1 = v1.split(".").mapNotNull { it.toIntOrNull() }
-        val parts2 = v2.split(".").mapNotNull { it.toIntOrNull() }
-        val maxLen = maxOf(parts1.size, parts2.size)
+    fun compareVersions(v1: String, v2: String): Int {
+        if (v1.isBlank() && v2.isBlank()) return 0
+        if (v1.isBlank()) return -1
+        if (v2.isBlank()) return 1
 
+        val clean1 = v1.trim().removePrefix("v").removePrefix("V")
+        val clean2 = v2.trim().removePrefix("v").removePrefix("V")
+
+        val parts1 = clean1.split(Regex("[.-]")).mapNotNull { Regex("^\\d+").find(it)?.value?.toIntOrNull() }
+        val parts2 = clean2.split(Regex("[.-]")).mapNotNull { Regex("^\\d+").find(it)?.value?.toIntOrNull() }
+
+        val maxLen = maxOf(parts1.size, parts2.size)
         for (i in 0 until maxLen) {
             val num1 = parts1.getOrElse(i) { 0 }
             val num2 = parts2.getOrElse(i) { 0 }

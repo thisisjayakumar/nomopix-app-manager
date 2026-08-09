@@ -192,7 +192,7 @@ fun AppManagerScreen(viewModel: AppManagerViewModel) {
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.LightGray) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 14.dp),
+                    .padding(bottom = 12.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color(0xFF6366F1),
@@ -203,6 +203,60 @@ fun AppManagerScreen(viewModel: AppManagerViewModel) {
                     unfocusedTextColor = Color.White
                 )
             )
+
+            // Updates Banner if upgrades available
+            if (uiState.updatesAvailableCount > 0) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 14.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF312E81))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SystemUpdate,
+                                contentDescription = null,
+                                tint = Color(0xFF818CF8),
+                                modifier = Modifier.size(26.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "${uiState.updatesAvailableCount} App Upgrade(s) Ready",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Next versions ready to install from GitHub",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFFC7D2FE)
+                                )
+                            }
+                        }
+                        Button(
+                            onClick = { viewModel.upgradeAllAvailableApps() },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1))
+                        ) {
+                            Icon(Icons.Default.ArrowUpward, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Upgrade All", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
 
             if (uiState.apps.isEmpty()) {
                 Box(
@@ -296,14 +350,45 @@ fun NomopixAppCard(
                 color = Color.LightGray,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(bottom = 10.dp)
+                modifier = Modifier.padding(bottom = 6.dp)
             )
+
+            // Installed vs Next Version Comparison Info
+            if (app.installStatus == InstallStatus.UPDATE_AVAILABLE) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF312E81).copy(alpha = 0.5f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Installed: ${app.installedVersionName ?: "Previous"}  ➔  Next: ${app.latestRelease?.tag ?: "Latest"}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFA5B4FC)
+                        )
+                        Text(
+                            text = "Upgrade Available",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF34D399)
+                        )
+                    }
+                }
+            }
 
             // Download Progress Bar
             if (app.downloadProgress.isDownloading) {
                 Column(modifier = Modifier.padding(bottom = 10.dp)) {
                     LinearProgressIndicator(
-                        progress = app.downloadProgress.progressFloat,
+                        progress = { app.downloadProgress.progressFloat },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp)
@@ -393,18 +478,22 @@ fun ReleaseRowItem(
     app: NomopixApp,
     onAction: () -> Unit
 ) {
-    val isInstalledThisVersion = app.installedVersionName?.contains(release.tag.removePrefix("v"), ignoreCase = true) == true
+    val context = LocalContext.current
+    val installedVerClean = app.installedVersionName?.trim()?.removePrefix("v") ?: ""
+    val releaseTagClean = release.tag.trim().removePrefix("v")
+    val isInstalledThisVersion = app.installedVersionName != null && installedVerClean.equals(releaseTagClean, ignoreCase = true)
     val isUpgrade = isLatest && app.installStatus == InstallStatus.UPDATE_AVAILABLE
-    val isDowngrade = !isLatest && app.installStatus != InstallStatus.NOT_INSTALLED
+    val isDowngrade = !isLatest && app.installStatus != InstallStatus.NOT_INSTALLED && !isInstalledThisVersion
 
     val buttonText = when {
-        isInstalledThisVersion -> "Reinstall ${release.tag}"
+        isInstalledThisVersion -> "Installed (${release.tag})"
         isUpgrade -> "Upgrade to ${release.tag}"
         isDowngrade -> "Downgrade to ${release.tag}"
         else -> "Install ${release.tag}"
     }
 
     val buttonBg = when {
+        isInstalledThisVersion -> Color(0xFF334155)
         isUpgrade -> Color(0xFF6366F1)
         isDowngrade -> Color(0xFFF59E0B)
         else -> Color(0xFF10B981)
@@ -459,13 +548,27 @@ fun ReleaseRowItem(
             }
 
             Button(
-                onClick = onAction,
+                onClick = {
+                    if (isInstalledThisVersion) {
+                        Toast.makeText(context, "App is already installed with ${release.tag}. Upgrade not required.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        onAction()
+                    }
+                },
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = buttonBg)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = buttonBg,
+                    contentColor = if (isInstalledThisVersion) Color.LightGray else Color.White
+                )
             ) {
                 Icon(
-                    imageVector = if (isUpgrade) Icons.Default.ArrowUpward else if (isDowngrade) Icons.Default.ArrowDownward else Icons.Default.Download,
+                    imageVector = when {
+                        isInstalledThisVersion -> Icons.Default.Check
+                        isUpgrade -> Icons.Default.ArrowUpward
+                        isDowngrade -> Icons.Default.ArrowDownward
+                        else -> Icons.Default.Download
+                    },
                     contentDescription = null,
                     modifier = Modifier.size(14.dp)
                 )
