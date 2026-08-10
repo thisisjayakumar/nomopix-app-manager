@@ -276,10 +276,11 @@ fun AppManagerScreen(viewModel: AppManagerViewModel) {
                     items(uiState.apps) { app ->
                         NomopixAppCard(
                             app = app,
-                            onInstallRelease = { release -> viewModel.installRelease(app, release) },
+                            onDownloadRelease = { release -> viewModel.downloadReleaseInBrowser(release) },
                             onUninstall = { viewModel.uninstallApp(app) }
                         )
                     }
+
                 }
             }
         }
@@ -289,7 +290,7 @@ fun AppManagerScreen(viewModel: AppManagerViewModel) {
 @Composable
 fun NomopixAppCard(
     app: NomopixApp,
-    onInstallRelease: (AppRelease) -> Unit,
+    onDownloadRelease: (AppRelease) -> Unit,
     onUninstall: () -> Unit
 ) {
     Card(
@@ -384,27 +385,6 @@ fun NomopixAppCard(
                 }
             }
 
-            // Download Progress Bar
-            if (app.downloadProgress.isDownloading) {
-                Column(modifier = Modifier.padding(bottom = 10.dp)) {
-                    LinearProgressIndicator(
-                        progress = { app.downloadProgress.progressFloat },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp)),
-                        color = Color(0xFF6366F1),
-                        trackColor = Color(0xFF0F172A)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = app.downloadProgress.statusMessage,
-                        fontSize = 11.sp,
-                        color = Color(0xFF10B981)
-                    )
-                }
-            }
-
             // Release Options: Latest & Previous
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // Latest Release Card
@@ -413,7 +393,7 @@ fun NomopixAppCard(
                         release = app.latestRelease,
                         isLatest = true,
                         app = app,
-                        onAction = { onInstallRelease(app.latestRelease) }
+                        onAction = { onDownloadRelease(app.latestRelease) }
                     )
                 }
 
@@ -423,10 +403,11 @@ fun NomopixAppCard(
                         release = app.previousRelease,
                         isLatest = false,
                         app = app,
-                        onAction = { onInstallRelease(app.previousRelease) }
+                        onAction = { onDownloadRelease(app.previousRelease) }
                     )
                 }
             }
+
 
             // Uninstall Action Button
             if (app.installStatus != InstallStatus.NOT_INSTALLED) {
@@ -478,8 +459,8 @@ fun ReleaseRowItem(
     app: NomopixApp,
     onAction: () -> Unit
 ) {
-    val context = LocalContext.current
     val installedVerClean = app.installedVersionName?.trim()?.removePrefix("v") ?: ""
+
     val releaseTagClean = release.tag.trim().removePrefix("v")
     val isInstalledThisVersion = app.installedVersionName != null && installedVerClean.equals(releaseTagClean, ignoreCase = true)
     val isUpgrade = isLatest && app.installStatus == InstallStatus.UPDATE_AVAILABLE
@@ -487,9 +468,9 @@ fun ReleaseRowItem(
 
     val buttonText = when {
         isInstalledThisVersion -> "Installed (${release.tag})"
-        isUpgrade -> "Upgrade to ${release.tag}"
-        isDowngrade -> "Downgrade to ${release.tag}"
-        else -> "Install ${release.tag}"
+        isUpgrade -> "Download Update ${release.tag}"
+        isDowngrade -> "Download ${release.tag}"
+        else -> "Download ${release.tag}"
     }
 
     val buttonBg = when {
@@ -548,27 +529,16 @@ fun ReleaseRowItem(
             }
 
             Button(
-                onClick = {
-                    if (isInstalledThisVersion) {
-                        Toast.makeText(context, "App is already installed with ${release.tag}. Upgrade not required.", Toast.LENGTH_SHORT).show()
-                    } else {
-                        onAction()
-                    }
-                },
+                onClick = onAction,
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = buttonBg,
-                    contentColor = if (isInstalledThisVersion) Color.LightGray else Color.White
+                    contentColor = Color.White
                 )
             ) {
                 Icon(
-                    imageVector = when {
-                        isInstalledThisVersion -> Icons.Default.Check
-                        isUpgrade -> Icons.Default.ArrowUpward
-                        isDowngrade -> Icons.Default.ArrowDownward
-                        else -> Icons.Default.Download
-                    },
+                    imageVector = Icons.Default.Download,
                     contentDescription = null,
                     modifier = Modifier.size(14.dp)
                 )
@@ -584,6 +554,7 @@ fun ReleaseRowItem(
             }
         }
     }
+
 }
 
 @Composable

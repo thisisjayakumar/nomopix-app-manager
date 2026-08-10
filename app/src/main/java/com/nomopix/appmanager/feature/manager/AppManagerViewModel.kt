@@ -127,38 +127,19 @@ class AppManagerViewModel @Inject constructor(
         }
         if (upgradableApps.isEmpty()) return
 
-        viewModelScope.launch {
-            for (app in upgradableApps) {
-                app.latestRelease?.let { release ->
-                    installRelease(app, release, forceUpgrade = true)
-                }
+        for (app in upgradableApps) {
+            app.latestRelease?.let { release ->
+                downloadReleaseInBrowser(release)
             }
         }
     }
 
-    fun installRelease(app: NomopixApp, release: AppRelease, forceUpgrade: Boolean = false) {
+    fun downloadReleaseInBrowser(release: AppRelease) {
         if (release.apkDownloadUrl.isBlank()) {
-            Timber.w("Cannot install release ${release.tag}: APK download URL is empty")
+            Timber.w("Cannot download release ${release.tag}: APK download URL is empty")
             return
         }
-
-        // Prevent re-installing the exact same app version unless explicitly forced
-        if (!forceUpgrade && installerManager.isSameVersionInstalled(app.installedVersionName, release.tag)) {
-            Timber.i("App ${app.name} is already installed with version ${app.installedVersionName}. Skipping redundant re-installation.")
-            return
-        }
-
-        viewModelScope.launch {
-            installerManager.downloadApk(release).collect { progress ->
-                val downloadsMap = _activeDownloads.value.toMutableMap()
-                downloadsMap[app.id] = progress
-                _activeDownloads.value = downloadsMap
-
-                if (!progress.isDownloading) {
-                    refreshAppList()
-                }
-            }
-        }
+        installerManager.openDownloadUrlInBrowser(release.apkDownloadUrl)
     }
 
     fun uninstallApp(app: NomopixApp) {
@@ -169,3 +150,4 @@ class AppManagerViewModel @Inject constructor(
         }
     }
 }
+
