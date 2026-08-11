@@ -90,19 +90,83 @@ class ApkInstallerManager @Inject constructor(
         }
     }
 
-    fun openDownloadUrlInBrowser(url: String) {
-        if (url.isBlank()) {
-            Timber.w("Cannot open browser: download URL is blank.")
-            return
-        }
+    fun downloadApk(release: AppRelease): Flow<AppDownloadProgress> = flow {
+        emit(AppDownloadProgress(isDownloading = true, progressFloat = 0.05f, statusMessage = "Connecting..."))
+
+        val apkDir = File(context.cacheDir, "apk_downloads").apply { mkdirs() }
+        val targetFile = File(apkDir, release.apkName.ifBlank { "app-${release.tag}.apk" })
+
         try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            val url = URL(release.apkDownloadUrl)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                connectTimeout = 15000
+                readTimeout = 15000
+                requestMethod = "GET"
+                setRequestProperty("User-Agent", "NomopixAppManager/1.0")
+            }
+
+            val totalBytes = if (connection.contentLengthLong > 0) connection.contentLengthLong else release.apkSizeBytes
+            var downloadedBytes = 0L
+
+            connection.inputStream.use { input ->
+                FileOutputStream(targetFile).use { output ->
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    var lastReportTime = System.currentTimeMillis()
+
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        output.write(buffer, 0, bytesRead)
+                        downloadedBytes += bytesRead
+
+                        val currentTime = System.currentTimeMillis()
+                        if (currentTime - lastReportTime > 200 || downloadedBytes == totalBytes) {
+                            lastReportTime = currentTime
+                            val progress = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes.toFloat() else 0.5f
+                            emit(
+                                AppDownloadProgress(
+                                    isDownloading = true,
+                                    progressFloat = progress.coerceIn(0f, 0.99f),
+                                    downloadedBytes = downloadedBytes,
+                                    totalBytes = totalBytes,
+                                    statusMessage = "Downloading ${downloadedBytes / (1024 * 1024)}MB / ${totalBytes / (1024 * 1024)}MB"
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            emit(AppDownloadProgress(isDownloading = false, progressFloat = 1.0f, downloadedBytes = totalBytes, totalBytes = totalBytes, statusMessage = "Download Complete! Ready to install."))
+            Timber.i("APK downloaded successfully to ${targetFile.absolutePath}")
+            
+            // Trigger APK Installation prompt automatically
+            installApkFile(targetFile)
+
+        } catch (e: Exception) {
+            Timber.e(e, "Error downloading APK from ${release.apkDownloadUrl}")
+            emit(AppDownloadProgress(isDownloading = false, progressFloat = 0f, statusMessage = "Download Failed: ${e.localizedMessage}"))
+        }
+    }.flowOn(Dispatchers.IO)
+
+    fun installApkFile(apkFile: File) {
+        try {
+            if (!apkFile.exists()) {
+                Timber.e("Cannot install APK: file does not exist at ${apkFile.absolutePath}")
+                return
+            }
+
+            val authority = "${context.packageName}.fileprovider"
+            val apkUri: Uri = FileProvider.getUriForFile(context, authority, apkFile)
+
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-            Timber.i("Opened direct download URL in browser: $url")
+            Timber.i("Launched Android PackageInstaller intent for ${apkFile.name}")
         } catch (e: Exception) {
-            Timber.e(e, "Failed to launch browser intent for URL: $url")
+            Timber.e(e, "Failed to launch APK installation intent")
         }
     }
 
@@ -118,7 +182,6 @@ class ApkInstallerManager @Inject constructor(
             Timber.e(e, "Failed to launch uninstallation intent for $packageName")
         }
     }
-
 
     fun compareVersions(v1: String, v2: String): Int {
         if (v1.isBlank() && v2.isBlank()) return 0
