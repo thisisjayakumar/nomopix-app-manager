@@ -612,7 +612,7 @@ fun IndexSettingsDialog(
                     onValueChange = { urlInput = it },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    placeholder = { Text("https://raw.githubusercontent.com/nomopix/index/main/index.txt") },
+                    placeholder = { Text("https://raw.githubusercontent.com/thisisjayakumar/nomopix-apps-list/refs/heads/main/index.txt") },
                     shape = RoundedCornerShape(10.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color(0xFF6366F1),

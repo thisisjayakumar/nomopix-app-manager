@@ -4,6 +4,14 @@ All notable changes, feature additions, bug fixes, and architectural improvement
 
 ---
 
+## [[1.0.4]] - 2026-10-05
+
+### 🔄 Index URL Configuration
+- Moved default app index URL out of code: `index.txt` in repo root now serves as the configuration source.
+- Added bundled `assets/index.txt` fallback so the manager works even when the default index URL is unreachable.
+
+---
+
 ## [[1.0.0]] - 2026-08-08
 
 ### 🚀 Initial Release & Features
